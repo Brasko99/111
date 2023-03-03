@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"log"
 	"net/smtp"
 	"text/template"
@@ -20,7 +21,7 @@ func failOnError(err error, msg string) {
 
 func main() {
 	//создаём connection
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	conn, err := amqp.Dial("ampq://"+os.Getenv("RABBITMQ_USER")+":"+"os.Getenv("RABBITMQ_PASS")+"@"+os.Getenv("RABBITMQ_ADDR"))
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
@@ -73,18 +74,18 @@ func main() {
 	)
 	failOnError(err, "Failed to register a consumer")
 
+	//объявляем структуру для принятого сообщения
+	type EmailData struct {
+		Email   string `json:"email"`
+		Content string `json:"content"`
+		Text    string `json:"text"`
+	}
+
 	var forever chan struct{}
 
 	//обрабатываем сообщение
 	go func() {
 		for d := range msgs {
-			//log.Printf("Received a message: %s", d.Body)
-			//объявляем структуру для принятого сообщения
-			type EmailData struct {
-				Email   string `json:"email"`
-				Content string `json:"content"`
-				Text    string `json:"text"`
-			}
 			//принимаем сообщение в переменную
 			ReceivedMessage := d.Body
 
@@ -103,12 +104,12 @@ func main() {
 			Email1 := []string{Email}
 
 			// Данные отправителя сообщения
-			from := "Olegovich99@inbox.ru"
-			password := "58PGx1zk5Zxgb4WPwq5i"
+			from := os.Getenv("EMAIL_LOGIN")
+			password := os.Getenv("EMAIL_PASSWORD")
 
 			// Настройки smtp server configuration.
-			smtpHost := "smtp.mail.ru"
-			smtpPort := "587"
+			smtpHost := "smtp.mail.ru"os.Getenv("SMTP_HOST")
+			smtpPort := "587"os.Getenv("SMTP_PORT")
 
 			// Аутентификация в почте отправителем.
 			auth := smtp.PlainAuth("", from, password, smtpHost)
